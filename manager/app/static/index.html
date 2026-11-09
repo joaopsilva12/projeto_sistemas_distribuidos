@@ -70,7 +70,7 @@ const fmt = v => v == null ? "-" : Number(v).toLocaleString("pt-BR");
 
 async function carregarCatalogo() {
   const c = await (await fetch("/api/catalogo")).json();
-  const padrao = ["39443", "39441", "39442", "40527"];
+  const padrao = ["39443", "39441", "39442", "39454"];
   document.getElementById("produtos").innerHTML = Object.entries(c.produtos).map(([id, nome]) =>
     `<label><input type="checkbox" value="${id}" ${padrao.includes(id) ? "checked" : ""}> ${nome}</label>`
   ).join("");

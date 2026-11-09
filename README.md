@@ -32,7 +32,7 @@ flowchart LR
     M -->|SELECT agregados| P
 ```
 
-- **Manager** (`manager/`): recebe o pedido, **particiona** o trabalho em tarefas (1 tarefa = 1 cultura × 1 UF; 4 culturas × 27 UFs = 108 tarefas), publica as tarefas na fila e agrega os resultados para o painel.
+- **Manager** (`manager/`): recebe o pedido, **particiona** o trabalho em tarefas (1 tarefa = 1 cultura × 1 UF; 4 culturas × 27 UFs = 108 tarefas, processadas em cerca de 70 s com 3 workers), publica as tarefas na fila e agrega os resultados para o painel.
 - **Workers** (`worker/`): contêineres idênticos e sem estado, que consomem a fila de forma concorrente. Podem ser escalados horizontalmente.
 - **Redis**: fila de tarefas (`BLPOP` garante que cada tarefa vá para um único worker) e heartbeat dos workers ativos.
 - **PostgreSQL**: armazena os jobs e os resultados, incluindo qual worker processou cada tarefa e o tempo gasto.
@@ -43,7 +43,7 @@ flowchart LR
 2. **Dentro de cada worker**: `WORKER_CONCURRENCY` corrotinas `asyncio` consomem tarefas ao mesmo tempo (padrão: 8).
 3. **Dentro de cada tarefa**: as 4 variáveis do SIDRA são buscadas simultaneamente com `asyncio.gather`.
 
-Também foram implementados mecanismos de tolerância a falhas: retentativa com backoff exponencial nas chamadas ao SIDRA, *heartbeat* com expiração para detectar workers inativos, e `healthcheck`/`depends_on` no Compose.
+Também foram implementados mecanismos de controle e tolerância a falhas: um **semáforo** limita as conexões simultâneas de cada worker ao SIDRA (`SIDRA_MAX_CONEXOES`, padrão 4), porque a API do IBGE derruba conexões quando recebe rajadas grandes; retentativa com backoff exponencial nas chamadas ao SIDRA; *heartbeat* com expiração para detectar workers inativos, e `healthcheck`/`depends_on` no Compose.
 
 ### Diagramas UML
 
@@ -90,7 +90,7 @@ docker compose ps
 Devem aparecer `agrodist-manager`, `agrodist-worker-1`, `-2`, `-3`, `agrodist-redis` e `agrodist-postgres`.
 
 ### 5. Usar o sistema
-Abra **http://localhost:8000**, escolha as culturas e clique em **Distribuir tarefas**. O painel mostra em tempo real a fila, os workers ativos, o progresso e o que cada worker processou.
+Abra **http://localhost:8000** (se não abrir, use **http://127.0.0.1:8000**), escolha as culturas e clique em **Distribuir tarefas**. O painel mostra em tempo real a fila, os workers ativos, o progresso e o que cada worker processou.
 
 A documentação interativa da API fica em **http://localhost:8000/docs**.
 

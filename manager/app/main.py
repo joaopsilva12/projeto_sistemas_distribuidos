@@ -26,7 +26,8 @@ UFS = {
 
 PRODUTOS = {
     "39443": "Soja", "39441": "Milho (1ª safra)", "39442": "Milho (2ª safra)",
-    "40527": "Café total", "39456": "Cana-de-açúcar", "39432": "Arroz",
+    "39454": "Café arábica", "39455": "Café canephora",
+    "39456": "Cana-de-açúcar", "39432": "Arroz",
     "39429": "Algodão herbáceo", "39445": "Trigo", "39436": "Feijão (1ª safra)",
     "39467": "Mandioca", "39463": "Laranja",
 }
@@ -46,7 +47,7 @@ app = FastAPI(title="AgroDist - Manager", lifespan=lifespan)
 
 
 class NovoJob(BaseModel):
-    produtos: list[str] = ["39443", "39441", "39442", "40527"]
+    produtos: list[str] = ["39443", "39441", "39442", "39454"]
     ufs: list[str] | None = None  # None = todas as UFs
 
 

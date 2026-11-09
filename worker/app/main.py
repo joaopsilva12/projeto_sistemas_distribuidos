@@ -45,7 +45,7 @@ async def salvar(pool, tarefa, dados, tempo_ms, status, erro=None):
                worker_id, tempo_ms, status, erro)
            VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)""",
         tarefa["job_id"], tarefa["uf"], dados.get("uf_nome") or tarefa.get("uf_nome"),
-        tarefa["produto"], dados.get("produto_nome") or tarefa.get("produto_nome"),
+        tarefa["produto"], tarefa.get("produto_nome") or dados.get("produto_nome"),
         dados.get("periodo"), dados.get("area_plantada_ha"), dados.get("area_colhida_ha"),
         dados.get("producao_t"), dados.get("rendimento_kg_ha"),
         dados.get("producao_ano_anterior_t"), dados.get("variacao_producao_pct"),
@@ -85,7 +85,8 @@ async def main():
         raise RuntimeError("Banco indisponível")
 
     conector = aiohttp.TCPConnector(limit=CONCORRENCIA * 4)
-    async with aiohttp.ClientSession(connector=conector) as http:
+    async with aiohttp.ClientSession(connector=conector,
+                                     headers={"User-Agent": "AgroDist/1.0"}) as http:
         log.info("pronto com %d consumidores assíncronos", CONCORRENCIA)
         await asyncio.gather(heartbeat(r),
                              *(consumidor(i, r, pool, http) for i in range(CONCORRENCIA)))

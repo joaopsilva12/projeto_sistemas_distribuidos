@@ -1,5 +1,6 @@
 """Cliente assíncrono da API SIDRA (IBGE) - tabela 6588 (LSPA)."""
 import asyncio
+import os
 
 import aiohttp
 
@@ -21,20 +22,35 @@ def _num(valor: str):
         return None  # SIDRA usa "-", "..", "X" para valores ausentes/sigilosos
 
 
+MAX_CONEXOES = int(os.getenv("SIDRA_MAX_CONEXOES", "4"))
+# Limita requisições simultâneas ao SIDRA por worker: a API do IBGE derruba
+# conexões quando recebe rajadas grandes (controle de taxa / backpressure).
+_limite = None
+
+
+def _semaforo():
+    global _limite
+    if _limite is None:
+        _limite = asyncio.Semaphore(MAX_CONEXOES)
+    return _limite
+
+
 async def buscar_variavel(session: aiohttp.ClientSession, uf: str, produto: str,
-                          variavel: str, periodos: int = 13, tentativas: int = 3):
+                          variavel: str, periodos: int = 13, tentativas: int = 5):
     """Retorna lista [(periodo_codigo, periodo_nome, valor, uf_nome, produto_nome)]."""
     url = (f"{BASE_URL}/t/{TABELA_LSPA}/n3/{uf}/v/{variavel}"
            f"/p/last%20{periodos}/c48/{produto}")
     for tentativa in range(1, tentativas + 1):
         try:
-            async with session.get(url, timeout=aiohttp.ClientTimeout(total=30)) as resp:
-                resp.raise_for_status()
-                dados = await resp.json(content_type=None)
+            async with _semaforo():
+                async with session.get(url, timeout=aiohttp.ClientTimeout(total=45)) as resp:
+                    resp.raise_for_status()
+                    dados = await resp.json(content_type=None)
             return [(d["D3C"], d["D3N"], _num(d["V"]), d["D1N"], d["D4N"]) for d in dados[1:]]
-        except Exception:
+        except Exception as e:
             if tentativa == tentativas:
-                raise
+                raise RuntimeError(f"SIDRA falhou após {tentativas} tentativas: "
+                                   f"{type(e).__name__} {e}") from e
             await asyncio.sleep(2 ** tentativa)  # backoff exponencial
 
 

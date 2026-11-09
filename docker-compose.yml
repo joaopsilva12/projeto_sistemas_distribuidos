@@ -30,6 +30,7 @@ services:
       REDIS_URL: redis://redis:6379/0
       DATABASE_URL: *db_url
       WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-8}
+      SIDRA_MAX_CONEXOES: ${SIDRA_MAX_CONEXOES:-4}
     deploy:
       replicas: 3
     depends_on:
