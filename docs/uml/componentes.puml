@@ -1,0 +1,31 @@
+@startuml componentes
+title AgroDist - Diagrama de Componentes
+
+package "Manager" {
+  [API REST] as API
+  [Particionador] as PART
+  [Agregador] as AGG
+  [Painel Web] as UI
+}
+package "Worker" {
+  [Consumidor de Fila] as CONS
+  [Cliente SIDRA (aiohttp)] as CLI
+  [Calculadora de Indicadores] as CALC
+  [Heartbeat] as HB
+}
+interface "Fila Redis" as FILA
+interface "SQL (asyncpg)" as SQL
+interface "HTTP SIDRA" as HTTP
+
+UI --> API
+API --> PART
+API --> AGG
+PART --> FILA
+CONS --> FILA
+HB --> FILA
+CONS --> CLI
+CLI --> HTTP
+CONS --> CALC
+CONS --> SQL
+AGG --> SQL
+@enduml

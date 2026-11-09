@@ -1,0 +1,38 @@
+@startuml sequencia
+title AgroDist - Diagrama de Sequência (processamento de um job)
+
+actor Usuario
+participant "Manager\n(FastAPI)" as M
+queue "Redis\nfila:tarefas" as R
+participant "Worker 1..N" as W
+participant "API SIDRA" as S
+database "PostgreSQL" as DB
+
+Usuario -> M : POST /api/jobs {produtos}
+M -> DB : INSERT jobs (total = produtos x 27 UFs)
+M -> R : RPUSH tarefa(produto, UF) x total
+M --> Usuario : {job_id, tarefas}
+
+par N workers x 8 consumidores assíncronos
+  loop enquanto houver tarefas
+    W -> R : BLPOP fila:tarefas
+    R --> W : tarefa
+    par asyncio.gather (4 variáveis)
+      W -> S : área plantada
+      W -> S : área colhida
+      W -> S : produção (13 meses)
+      W -> S : rendimento
+    end
+    S --> W : JSON
+    W -> W : calcula variação anual e perda de área
+    W -> DB : INSERT resultados (worker_id, tempo_ms)
+    W -> DB : UPDATE jobs SET concluidas+1
+  end
+end
+
+loop a cada 2 s
+  Usuario -> M : GET /api/jobs/{id}
+  M -> DB : SELECT agregados
+  M --> Usuario : progresso, ranking, tarefas por worker
+end
+@enduml
