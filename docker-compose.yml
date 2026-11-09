@@ -1,0 +1,72 @@
+name: agrodist
+
+x-db-url: &db_url "postgresql://${POSTGRES_USER:-agro}:${POSTGRES_PASSWORD:-agro123}@postgres:5432/${POSTGRES_DB:-agrodist}"
+
+services:
+  # ---------- NÓ MANAGER (coordenador) ----------
+  manager:
+    build: ./manager
+    container_name: agrodist-manager
+    hostname: manager
+    labels:
+      agrodist.role: "manager"
+    ports:
+      - "8000:8000"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: *db_url
+    depends_on:
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    networks: [cluster]
+    restart: unless-stopped
+
+  # ---------- NÓS WORKERS (processamento) ----------
+  worker:
+    build: ./worker
+    labels:
+      agrodist.role: "worker"
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: *db_url
+      WORKER_CONCURRENCY: ${WORKER_CONCURRENCY:-8}
+    deploy:
+      replicas: 3
+    depends_on:
+      redis: { condition: service_healthy }
+      postgres: { condition: service_healthy }
+    networks: [cluster]
+    restart: unless-stopped
+
+  # ---------- INFRAESTRUTURA ----------
+  redis:
+    image: redis:7-alpine
+    container_name: agrodist-redis
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 10
+    networks: [cluster]
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: agrodist-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-agro}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-agro123}
+      POSTGRES_DB: ${POSTGRES_DB:-agrodist}
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER}"]
+      interval: 3s
+      retries: 10
+    networks: [cluster]
+
+networks:
+  cluster:
+    driver: bridge
+
+volumes:
+  pgdata:
