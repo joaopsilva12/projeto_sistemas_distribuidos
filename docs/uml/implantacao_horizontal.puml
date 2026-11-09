@@ -1,0 +1,51 @@
+@startuml implantacao_horizontal
+left to right direction
+title AgroDist - Diagrama de Implantação (Topologia Docker)
+skinparam nodesep 40
+
+actor Usuario
+cloud "IBGE / API SIDRA\napisidra.ibge.gov.br" as SIDRA
+
+node "Host Docker" {
+  frame "Rede bridge: cluster" {
+    node "<<container>>\nagrodist-manager\n(MANAGER)" as M {
+      component "FastAPI\n:8000" as API
+      component "Particionador\nde Jobs" as PART
+      artifact "Painel HTML" as UI
+    }
+    node "<<container>>\nworker #1\n(WORKER)" as W1 {
+      component "asyncio\n8 consumidores" as C1
+    }
+    node "<<container>>\nworker #2\n(WORKER)" as W2 {
+      component "asyncio\n8 consumidores" as C2
+    }
+    node "<<container>>\nworker #N\n(WORKER)" as WN {
+      component "asyncio\n8 consumidores" as CN
+    }
+    node "<<container>>\nagrodist-redis" as R {
+      queue "fila:tarefas" as Q
+      database "heartbeats\nworker:*" as HB
+    }
+    node "<<container>>\nagrodist-postgres" as PG {
+      database "jobs\nresultados" as DB
+    }
+  }
+}
+
+Usuario --> API : HTTP :8000
+API --> PART
+PART --> Q : RPUSH (tarefas)
+PART --> DB : INSERT job
+Q --> C1 : BLPOP
+Q --> C2 : BLPOP
+Q --> CN : BLPOP
+C1 --> SIDRA : HTTPS (aiohttp)
+C2 --> SIDRA
+CN --> SIDRA
+C1 --> DB : INSERT resultado
+C2 --> DB
+CN --> DB
+W1 ..> HB : SET ex=10s
+API ..> HB : SCAN (workers ativos)
+API --> DB : SELECT agregados
+@enduml

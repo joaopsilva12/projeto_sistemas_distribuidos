@@ -55,6 +55,15 @@ Os arquivos PlantUML ficam em [`docs/uml/`](docs/uml):
 
 Para gerar as imagens, use a extensão PlantUML do VS Code ou cole o conteúdo em https://www.plantuml.com/plantuml.
 
+#### Implantação (topologia Docker)
+![Diagrama de implantação](docs/uml/implantacao.png)
+
+#### Sequência
+![Diagrama de sequência](docs/uml/sequencia.png)
+
+#### Componentes
+![Diagrama de componentes](docs/uml/componentes.png)
+
 ### Tecnologias
 
 Python 3.12 · FastAPI · asyncio · aiohttp · asyncpg · Redis 7 · PostgreSQL 16 · Docker Compose
