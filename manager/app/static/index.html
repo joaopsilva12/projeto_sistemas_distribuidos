@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgroDist - Painel</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; background: #f4f6f2; color: #1d2b1f; }
+  header { background: #2f6b3a; color: #fff; padding: 16px 24px; }
+  header h1 { margin: 0; font-size: 22px; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: 14px; }
+  main { max-width: 1200px; margin: auto; padding: 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 16px; margin-bottom: 16px;
+          box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+  h2 { margin-top: 0; font-size: 17px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+  label { display: inline-block; margin: 4px 12px 4px 0; font-size: 14px; }
+  button { background: #2f6b3a; color: #fff; border: 0; padding: 10px 18px;
+           border-radius: 6px; cursor: pointer; font-size: 15px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { padding: 6px 8px; border-bottom: 1px solid #e3e7e0; text-align: left; }
+  th { background: #eef2ea; }
+  .num { text-align: right; }
+  .pos { color: #2f6b3a; } .neg { color: #b23a2a; }
+  .bar { height: 14px; background: #e3e7e0; border-radius: 7px; overflow: hidden; }
+  .bar div { height: 100%; background: #4f9a5b; transition: width .4s; }
+  .worker { display: inline-block; background: #eef2ea; border-radius: 6px;
+            padding: 6px 10px; margin: 4px; font-size: 13px; }
+  .scroll { overflow-x: auto; }
+</style>
+</head>
+<body>
+<header>
+  <h1>AgroDist: Monitor Distribuído de Safras</h1>
+  <p>Dados do IBGE/SIDRA, LSPA (tabela 6588), processados por um cluster Manager/Workers</p>
+</header>
+<main>
+  <div class="grid">
+    <div class="card">
+      <h2>1. Novo processamento</h2>
+      <div id="produtos"></div>
+      <p><button onclick="criarJob()">Distribuir tarefas</button></p>
+      <div id="msg"></div>
+    </div>
+    <div class="card">
+      <h2>2. Cluster</h2>
+      <p>Tarefas na fila: <b id="fila">-</b></p>
+      <div id="workers"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>3. Progresso do job <span id="jobid" style="font-weight:normal;font-size:12px"></span></h2>
+    <div class="bar"><div id="barra" style="width:0"></div></div>
+    <p id="progresso"></p>
+    <div class="grid">
+      <div><h3>Tarefas por worker</h3><table id="porWorker"></table></div>
+      <div><h3>Produção total por cultura</h3><table id="ranking"></table></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>4. Resultados por estado</h2>
+    <div class="scroll"><table id="resultados"></table></div>
+  </div>
+</main>
+<script>
+let jobAtual = null;
+const fmt = v => v == null ? "-" : Number(v).toLocaleString("pt-BR");
+
+async function carregarCatalogo() {
+  const c = await (await fetch("/api/catalogo")).json();
+  const padrao = ["39443", "39441", "39442", "40527"];
+  document.getElementById("produtos").innerHTML = Object.entries(c.produtos).map(([id, nome]) =>
+    `<label><input type="checkbox" value="${id}" ${padrao.includes(id) ? "checked" : ""}> ${nome}</label>`
+  ).join("");
+  const jobs = await (await fetch("/api/jobs")).json();
+  if (jobs.length) jobAtual = jobs[0].id;
+}
+
+async function criarJob() {
+  const produtos = [...document.querySelectorAll("#produtos input:checked")].map(i => i.value);
+  const r = await fetch("/api/jobs", { method: "POST", headers: { "Content-Type": "application/json" },
+                                       body: JSON.stringify({ produtos }) });
+  const d = await r.json();
+  if (!r.ok) { document.getElementById("msg").textContent = d.detail; return; }
+  jobAtual = d.job_id;
+  document.getElementById("msg").textContent = `${d.tarefas} tarefas enviadas para a fila.`;
+}
+
+async function atualizar() {
+  const c = await (await fetch("/api/cluster")).json();
+  document.getElementById("fila").textContent = c.fila_pendente;
+  document.getElementById("workers").innerHTML = c.workers_ativos.length
+    ? c.workers_ativos.map(w => `<span class="worker">🟢 ${w.id} · ${w.concorrencia} slots · ${c.total_por_worker[w.id] || 0} tarefas</span>`).join("")
+    : "Nenhum worker ativo";
+
+  if (!jobAtual) return;
+  const j = await (await fetch(`/api/jobs/${jobAtual}`)).json();
+  const pct = Math.round(j.job.concluidas / j.job.total * 100);
+  document.getElementById("jobid").textContent = jobAtual;
+  document.getElementById("barra").style.width = pct + "%";
+  document.getElementById("progresso").textContent = `${j.job.concluidas} de ${j.job.total} tarefas (${pct}%)`;
+  document.getElementById("porWorker").innerHTML = "<tr><th>Worker</th><th class=num>Tarefas</th><th class=num>Tempo médio (ms)</th></tr>" +
+    j.por_worker.map(w => `<tr><td>${w.worker_id}</td><td class=num>${w.tarefas}</td><td class=num>${w.tempo_medio_ms}</td></tr>`).join("");
+  document.getElementById("ranking").innerHTML = "<tr><th>Cultura</th><th class=num>Produção (t)</th><th class=num>Rend. médio (kg/ha)</th></tr>" +
+    j.ranking_produtos.map(p => `<tr><td>${p.produto_nome}</td><td class=num>${fmt(p.producao_total_t)}</td><td class=num>${fmt(p.rendimento_medio)}</td></tr>`).join("");
+  document.getElementById("resultados").innerHTML =
+    "<tr><th>UF</th><th>Cultura</th><th>Período</th><th class=num>Área plantada (ha)</th><th class=num>Produção (t)</th>" +
+    "<th class=num>Rend. (kg/ha)</th><th class=num>Var. anual</th><th class=num>Perda de área</th><th>Worker</th><th class=num>ms</th></tr>" +
+    j.resultados.filter(r => r.status === "ok" && r.producao_t).map(r => {
+      const v = r.variacao_producao_pct;
+      const cls = v == null ? "" : (v >= 0 ? "pos" : "neg");
+      return `<tr><td>${r.uf_nome}</td><td>${r.produto_nome}</td><td>${r.periodo}</td>
+        <td class=num>${fmt(r.area_plantada_ha)}</td><td class=num>${fmt(r.producao_t)}</td>
+        <td class=num>${fmt(r.rendimento_kg_ha)}</td><td class="num ${cls}">${v == null ? "-" : v + "%"}</td>
+        <td class=num>${r.perda_area_pct == null ? "-" : r.perda_area_pct + "%"}</td>
+        <td>${r.worker_id}</td><td class=num>${r.tempo_ms}</td></tr>`;
+    }).join("");
+}
+
+carregarCatalogo().then(atualizar);
+setInterval(atualizar, 2000);
+</script>
+</body>
+</html>
