@@ -2,6 +2,8 @@
 
 Projeto final da disciplina **Desenvolvimento de Sistemas Distribuídos**, com o professor Vitório Neto.
 
+**Equipe:** Alan, Angelo, João Paulo, João Victor, Lucas e Vitor.
+
 O AgroDist consome dados do **LSPA (Levantamento Sistemático da Produção Agrícola)** pela **API SIDRA do IBGE** (tabela 6588). O processamento é distribuído entre um nó **Manager** (coordenador) e vários nós **Workers**, que trabalham em paralelo. O resultado é um panorama da safra brasileira por cultura e por estado.
 
 ## Tema: Agronegócio

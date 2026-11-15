@@ -1,6 +1,8 @@
 # Roteiro do Pitch (máx. 10 min)
 
-Slides: [`AgroDist_Pitch.pptx`](AgroDist_Pitch.pptx). As falas também estão nas anotações de cada slide.
+**Equipe:** Alan, Angelo, João Paulo, João Victor, Lucas e Vitor.
+
+Slides: [`AgroDist_Pitch.pptx`](AgroDist_Pitch.pptx). Roteiro palavra por palavra da demonstração e conclusão: [`roteiro_demonstracao.md`](roteiro_demonstracao.md). As falas também estão nas anotações de cada slide.
 
 ## Antes de começar
 - Docker Desktop aberto e cluster no ar: `docker compose up -d`
