@@ -4,6 +4,11 @@ Projeto final da disciplina **Desenvolvimento de Sistemas Distribuídos**, com o
 
 **Equipe:** Alan, Angelo, João Paulo, João Victor, Lucas e Vitor.
 
+## Pitch
+
+- **Vídeo da apresentação:** https://www.youtube.com/watch?v=8F1ezOQ--cM
+- **Slides:** [`docs/pitch/AgroDist_Pitch.pptx`](docs/pitch/AgroDist_Pitch.pptx)
+
 O AgroDist consome dados do **LSPA (Levantamento Sistemático da Produção Agrícola)** pela **API SIDRA do IBGE** (tabela 6588). O processamento é distribuído entre um nó **Manager** (coordenador) e vários nós **Workers**, que trabalham em paralelo. O resultado é um panorama da safra brasileira por cultura e por estado.
 
 ## Tema: Agronegócio
